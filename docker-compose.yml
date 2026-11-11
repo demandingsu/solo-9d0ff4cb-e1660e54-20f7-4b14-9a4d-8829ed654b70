@@ -7,6 +7,7 @@ services:
       DEMO_INTERNAL_URL: "http://demo:8000"
       DEMO_PUBLIC_URL: "http://localhost:8001"
       DEMO_LIST_URL: "http://localhost:8001/notices?page=1"
+      DEMO_QA_LIST_URL: "http://localhost:8001/qa?page=1"
     ports:
       - "8000:8000"
     depends_on:

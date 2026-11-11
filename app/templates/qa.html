@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}{% if result %}答疑核对结果 · {% endif %}澄清问题答复核对{% endblock %}
+{% block content %}
+<section class="hero qa-hero">
+  <div class="hero-copy">
+    <p class="eyebrow">投标专员工作台 · 定稿前核对</p>
+    <h1>提交的澄清问题，都有答复了吗？</h1>
+    <p class="lede">
+      输入答疑目录地址、项目编号、标段号和多个问题编号，工具沿同站分页读取答疑详情，
+      只核对对应项目和标段；“参见另一问题”的答复会跨页追到实际答复，并列出引用经过与来源链接。
+    </p>
+    <ul class="feature-list">
+      <li>跨页追踪“参见另一问题”引用链</li>
+      <li>循环引用、答复冲突标为待核实</li>
+      <li>抓取失败显示无法核定，不把漏抓当未答复</li>
+    </ul>
+  </div>
+
+  <aside class="demo-card">
+    <div class="demo-card-head">
+      <span class="demo-dot"></span>
+      <div>
+        <strong>离线演示，已内置</strong>
+        <p>无需连接外网，示例答疑分处第 1–5 页，含跨页引用、循环引用与答复冲突。</p>
+      </div>
+    </div>
+    <div class="preset-list">
+      {% for preset in qa_presets %}
+      <a class="preset" href="{{ preset.href }}">
+        <span>
+          <strong>{{ preset.name }}</strong>
+          <small>{{ preset.note }}</small>
+        </span>
+        <span class="preset-arrow" aria-hidden="true">→</span>
+      </a>
+      {% endfor %}
+    </div>
+    <p class="demo-hint">
+      结果中的来源链接已自动转为本站
+      <a href="{{ demo_qa_public_url }}" target="_blank" rel="noopener">/demo</a> 代理，断网也能打开。
+    </p>
+  </aside>
+</section>
+
+<form class="check-form qa-form" method="get" action="/qa-check" aria-label="澄清问题答复核对">
+  <div class="field field-url">
+    <label for="qa_list_url">答疑目录列表页地址</label>
+    <input id="qa_list_url" name="list_url" type="text" required
+           value="{{ form.list_url or demo_qa_list_url }}"
+           placeholder="https://example.com/qa?page=1"
+           autocomplete="off" spellcheck="false">
+    <span class="field-note">填写答疑目录第一页的完整地址，工具会自行沿“下一页”抓取同站后续页面。</span>
+  </div>
+  <div class="field">
+    <label for="qa_project_no">项目编号</label>
+    <input id="qa_project_no" name="project_no" type="text" required
+           value="{{ form.project_no or '' }}" placeholder="如 DEMO-2026-001"
+           autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field field-section">
+    <label for="qa_section_no">标段号</label>
+    <input id="qa_section_no" name="section_no" type="text" required
+           value="{{ form.section_no or '' }}" placeholder="如 01 或 A"
+           autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field field-questions">
+    <label for="qa_question_numbers">问题编号（多个）</label>
+    <input id="qa_question_numbers" name="question_numbers" type="text" required
+           value="{{ form.question_numbers or '' }}" placeholder="如 Q001, Q002, Q003"
+           autocomplete="off" spellcheck="false">
+    <span class="field-note">多个编号可用逗号、顿号、分号、空格或换行分隔。</span>
+  </div>
+  <button class="submit-button" type="submit">
+    开始核对
+    <span aria-hidden="true">→</span>
+  </button>
+</form>
+
+{% if form_error %}
+<div class="alert alert-error" role="alert">
+  <strong>无法开始核对</strong>
+  <p>{{ form_error }}</p>
+</div>
+{% endif %}
+
+{% if result %}
+<section class="result-section" aria-labelledby="qa-result-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">核对结果</p>
+      <h2 id="qa-result-heading">{{ result.project_no }} · 标段 {{ result.section_no }}</h2>
+    </div>
+    <span class="timestamp">本次实时抓取 · 共 {{ result.summary.total }} 个问题</span>
+  </div>
+
+  <div class="qa-summary" role="list">
+    <div class="qa-summary-item sum-answered" role="listitem">
+      <span class="sum-number">{{ result.summary.answered }}</span>
+      <span class="sum-label">已答复</span>
+    </div>
+    <div class="qa-summary-item sum-unanswered" role="listitem">
+      <span class="sum-number">{{ result.summary.unanswered }}</span>
+      <span class="sum-label">未答复</span>
+    </div>
+    <div class="qa-summary-item sum-review" role="listitem">
+      <span class="sum-number">{{ result.summary.needs_review }}</span>
+      <span class="sum-label">待核实</span>
+    </div>
+    <div class="qa-summary-item sum-indeterminate" role="listitem">
+      <span class="sum-number">{{ result.summary.indeterminate }}</span>
+      <span class="sum-label">无法核定</span>
+    </div>
+  </div>
+
+  {% if result.round_incomplete %}
+  <div class="alert alert-unknown" role="alert">
+    <strong>本轮抓取不完整：未取得的答复一律标为“无法核定”，不会计为未答复</strong>
+    <p>请处理下列失败地址后重新核对；已确认的答复仍保留其来源链接。</p>
+    {% if result.failures %}
+    <div class="failure-list">
+      <p class="failure-title">抓取或解析失败的地址：</p>
+      <ul>
+        {% for failure in result.failures %}
+        <li>
+          <span class="failure-reason">{{ failure.reason }}（阶段：{{ failure.stage }}）</span>
+          <a href="{{ failure.url }}" target="_blank" rel="noopener">{{ failure.url }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if result.warnings %}
+  <div class="alert alert-warning">
+    <strong>检索提示</strong>
+    <ul>
+      {% for warning in result.warnings %}<li>{{ warning }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="content-card">
+    <div class="card-heading">
+      <div>
+        <p class="eyebrow">逐题核对</p>
+        <h3>问题编号与答复状态</h3>
+      </div>
+      <span class="muted-note">仅包含项目 {{ result.project_no }} 标段 {{ result.section_no }} 的答疑</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="result-table qa-table">
+        <thead>
+          <tr>
+            <th>问题编号</th>
+            <th>状态</th>
+            <th>实际答复 / 说明</th>
+            <th>引用经过与来源</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in result.results %}
+          <tr class="qa-row qa-row-{{ item.status }}">
+            <td class="nowrap"><code>{{ item.question_no }}</code></td>
+            <td>
+              <span class="qa-status-badge qa-status-{{ item.status }}">{{ item.status_label }}</span>
+              {% if item.record_count %}<div class="muted-note">命中 {{ item.record_count }} 条记录</div>{% endif %}
+            </td>
+            <td class="qa-answer-cell">
+              {% if item.answer %}
+              <p class="qa-answer-text">{{ item.answer }}</p>
+              {% if item.answer_source_url %}
+              <a class="inline-link" href="{{ item.answer_source_url }}" target="_blank" rel="noopener">
+                实际答复来源：{{ item.answer_source_title or '打开答疑详情' }} ↗
+              </a>
+              {% endif %}
+              {% else %}
+              <ul class="qa-reasons">
+                {% for reason in item.reasons %}<li>{{ reason }}</li>{% endfor %}
+              </ul>
+              {% endif %}
+            </td>
+            <td class="qa-chain-cell">
+              {% if item.chain|length > 1 %}
+              <ol class="qa-chain">
+                {% for hop in item.chain %}
+                <li class="qa-chain-hop hop-{{ hop.kind }}">
+                  <span class="hop-kind">{% if hop.kind == 'reference' %}引用 →{% else %}原问题{% endif %}</span>
+                  <code>{{ hop.question_no }}</code>
+                  {% if hop.url %}
+                  <a class="inline-link" href="{{ hop.url }}" target="_blank" rel="noopener">{{ hop.title or '打开' }} ↗</a>
+                  {% else %}
+                  <span class="muted-note">{{ hop.note or '未找到来源页' }}</span>
+                  {% endif %}
+                </li>
+                {% endfor %}
+              </ol>
+              {% elif item.chain|length == 1 and item.chain[0].url %}
+              <a class="inline-link" href="{{ item.chain[0].url }}" target="_blank" rel="noopener">
+                {{ item.chain[0].title or '打开答疑详情' }} ↗
+              </a>
+              {% else %}
+              <span class="muted-note">无来源记录</span>
+              {% endif %}
+              {% if item.status == 'answered' and item.reasons %}
+              <div class="muted-note qa-chain-note">{% for reason in item.reasons %}{{ reason }}<br>{% endfor %}</div>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">
+      “未答复”表示在完整读取的目录中找不到该问题，或找到的记录答复正文为空；
+      “待核实”表示存在循环引用、悬空引用或同一编号答复正文冲突，需人工确认；
+      “无法核定”表示本轮有页面抓取或解析失败，不能把漏抓当成未答复。
+    </p>
+  </div>
+
+  <details class="scope-details">
+    <summary>查看本次检索地址（{{ result.searched_pages|length }} 个列表页 · {{ result.detail_page_count }} 个详情页）</summary>
+    <ul>
+      {% for page in result.searched_pages %}
+      <li><a href="{{ page }}" target="_blank" rel="noopener">{{ page }}</a></li>
+      {% endfor %}
+    </ul>
+  </details>
+
+  <div class="result-actions">
+    <a class="button-secondary" href="/qa">核对另一批问题</a>
+    <span>本次查询不保存数据，刷新或重新查询会重新抓取。</span>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -16,12 +16,16 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from .crawler import check_lot, normalize_url
+from .qa_crawler import check_qa, split_question_numbers
 
 BASE_DIR = Path(__file__).resolve().parent
 DEMO_INTERNAL_URL = os.getenv("DEMO_INTERNAL_URL", "http://localhost:8001").rstrip("/")
 DEMO_PUBLIC_URL = os.getenv("DEMO_PUBLIC_URL", "http://localhost:8001").rstrip("/")
 DEMO_LIST_URL = os.getenv(
     "DEMO_LIST_URL", f"{DEMO_PUBLIC_URL}/notices?page=1"
+)
+DEMO_QA_LIST_URL = os.getenv(
+    "DEMO_QA_LIST_URL", f"{DEMO_PUBLIC_URL}/qa?page=1"
 )
 
 app = FastAPI(
@@ -98,7 +102,10 @@ templates.env.filters["public_url"] = public_url_for
 @app.middleware("http")
 async def disable_stale_results(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path in {"/", "/check", "/api/check"} or request.url.path.startswith("/demo"):
+    if (
+        request.url.path in {"/", "/check", "/api/check", "/qa", "/qa-check", "/api/qa-check"}
+        or request.url.path.startswith("/demo")
+    ):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         response.headers["Pragma"] = "no-cache"
     return response
@@ -108,6 +115,13 @@ class CheckPayload(BaseModel):
     list_url: str = Field(..., description="公告列表页地址")
     project_no: str = Field(..., description="项目编号")
     section_no: str = Field(..., description="标段号")
+
+
+class QACheckPayload(BaseModel):
+    list_url: str = Field(..., description="答疑目录列表页地址")
+    project_no: str = Field(..., description="项目编号")
+    section_no: str = Field(..., description="标段号")
+    question_numbers: list[str] = Field(..., min_length=1, description="待核对的问题编号列表")
 
 
 def _demo_presets() -> list[dict[str, str]]:
@@ -149,10 +163,52 @@ def _base_context(request: Request) -> dict:
     return {
         "request": request,
         "demo_list_url": DEMO_LIST_URL,
+        "demo_qa_list_url": DEMO_QA_LIST_URL,
         "demo_public_url": "/demo/notices?page=1",
+        "demo_qa_public_url": "/demo/qa?page=1",
         "presets": _demo_presets(),
+        "qa_presets": _qa_presets(),
         "demo_available": bool(DEMO_INTERNAL_URL),
     }
+
+
+def _qa_presets() -> list[dict[str, str]]:
+    presets = [
+        {
+            "name": "跨页引用与循环引用",
+            "list_url": DEMO_QA_LIST_URL,
+            "project_no": "DEMO-2026-001",
+            "section_no": "01",
+            "question_numbers": "Q001,Q002,Q004,Q005,Q009,Q099",
+            "note": "Q002 跨页追到 Q003；Q004 循环引用；Q005 空答复；Q099 不存在",
+        },
+        {
+            "name": "同编号答复冲突",
+            "list_url": DEMO_QA_LIST_URL,
+            "project_no": "DEMO-2026-001",
+            "section_no": "01",
+            "question_numbers": "Q012",
+            "note": "Q012 有两条不同的直接答复，标为待核实",
+        },
+        {
+            "name": "排除其他项目/标段",
+            "list_url": DEMO_QA_LIST_URL,
+            "project_no": "DEMO-2026-001",
+            "section_no": "01",
+            "question_numbers": "Q201,Q301",
+            "note": "Q201 属另一项目、Q301 属同项目 02 标段，均不得混入",
+        },
+    ]
+    for preset in presets:
+        preset["href"] = "/qa-check?" + urlencode(
+            {
+                "list_url": preset["list_url"],
+                "project_no": preset["project_no"],
+                "section_no": preset["section_no"],
+                "question_numbers": preset["question_numbers"],
+            }
+        )
+    return presets
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -235,6 +291,128 @@ async def api_check_post(payload: CheckPayload):
     return await _json_result(payload.list_url, payload.project_no, payload.section_no)
 
 
+# ---------------------------------------------------------------------------
+# Clarification Q&A reconciliation
+# ---------------------------------------------------------------------------
+
+
+@app.get("/qa", response_class=HTMLResponse)
+async def qa_index(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "qa.html",
+        _base_context(request) | {"result": None, "form": {}, "form_error": None},
+    )
+
+
+def _qa_form(list_url: str, project_no: str, section_no: str, question_numbers: str) -> dict:
+    return {
+        "list_url": list_url,
+        "project_no": project_no,
+        "section_no": section_no,
+        "question_numbers": question_numbers,
+    }
+
+
+# Tests can inject an httpx client factory (e.g. pointed at an in-process
+# ASGI transport).  Production code leaves this unset and uses real sockets.
+QA_CLIENT_FACTORY = None
+DEMO_CLIENT_FACTORY = None
+
+
+@app.get("/qa-check", response_class=HTMLResponse)
+async def qa_check_page(
+    request: Request,
+    list_url: str = "",
+    project_no: str = "",
+    section_no: str = "",
+    question_numbers: str = "",
+):
+    form = _qa_form(list_url, project_no, section_no, question_numbers)
+    questions = split_question_numbers(question_numbers)
+    if not list_url.strip() or not project_no.strip() or not section_no.strip() or not questions:
+        return templates.TemplateResponse(
+            request,
+            "qa.html",
+            _base_context(request)
+            | {
+                "result": None,
+                "form": form,
+                "form_error": "请填写答疑目录地址、项目编号、标段号和至少一个问题编号。",
+            },
+            status_code=400,
+        )
+
+    try:
+        normalized = demo_crawl_url(list_url)
+    except ValueError as exc:
+        return templates.TemplateResponse(
+            request,
+            "qa.html",
+            _base_context(request)
+            | {"result": None, "form": form, "form_error": str(exc)},
+            status_code=400,
+        )
+
+    outcome = await check_qa(
+        normalized, project_no, section_no, questions, client_factory=QA_CLIENT_FACTORY
+    )
+    result = outcome.as_dict(public_url_for)
+    return templates.TemplateResponse(
+        request,
+        "qa.html",
+        _base_context(request) | {"result": result, "form": form, "form_error": None},
+    )
+
+
+async def _qa_json_result(
+    list_url: str, project_no: str, section_no: str, question_numbers: list[str]
+) -> JSONResponse:
+    try:
+        crawl_url = demo_crawl_url(list_url)
+    except ValueError:
+        result = (
+            await check_qa(
+                list_url,
+                project_no,
+                section_no,
+                question_numbers,
+                client_factory=QA_CLIENT_FACTORY,
+            )
+        ).as_dict(public_url_for)
+        return JSONResponse(result, status_code=400)
+    result = (
+        await check_qa(
+            crawl_url,
+            project_no,
+            section_no,
+            question_numbers,
+            client_factory=QA_CLIENT_FACTORY,
+        )
+    ).as_dict(public_url_for)
+    return JSONResponse(result)
+
+
+@app.get("/api/qa-check")
+async def api_qa_check(
+    request: Request,
+    list_url: Annotated[str, Query(description="答疑目录列表页地址")],
+    project_no: Annotated[str, Query(description="项目编号")],
+    section_no: Annotated[str, Query(description="标段号")],
+    question_numbers: Annotated[list[str], Query(description="待核对问题编号，可重复传入")],
+):
+    if not question_numbers:
+        return JSONResponse({"detail": "至少需要一个问题编号"}, status_code=400)
+    return await _qa_json_result(list_url, project_no, section_no, question_numbers)
+
+
+@app.post("/api/qa-check")
+async def api_qa_check_post(payload: QACheckPayload):
+    return await _qa_json_result(
+        payload.list_url, payload.project_no, payload.section_no, payload.question_numbers
+    )
+
+
 _ABSOLUTE_LINK_RE = re.compile(r'((?:href|src|action)=["\'])(/(?!/))', re.I)
 
 
@@ -256,8 +434,12 @@ async def demo_proxy(request: Request, path: str):
         target += "?" + request.url.query
 
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-            upstream = await client.get(target)
+        if DEMO_CLIENT_FACTORY is not None:
+            async with DEMO_CLIENT_FACTORY() as client:
+                upstream = await client.get(target)
+        else:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+                upstream = await client.get(target)
     except httpx.HTTPError:
         return HTMLResponse(
             "<h1>示例站暂时不可用</h1><p>请稍后再试，或直接访问示例站端口 8001。</p>",

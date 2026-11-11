@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .data import NOTICE_BY_SLUG, PAGE_SIZE, TYPE_LABELS, notices_on_page, page_count
+from .qa_data import QA_BY_SLUG, QA_PAGE_SIZE, qa_notices_on_page, qa_page_count
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -60,6 +61,44 @@ async def notice_detail(request: Request, slug: str):
         request,
         "detail.html",
         {"notice": notice, "type_labels": TYPE_LABELS},
+    )
+
+
+@app.get("/qa")
+async def qa_list(request: Request, page: int = 1):
+    total_pages = qa_page_count()
+    if page < 1 or page > total_pages:
+        raise HTTPException(status_code=404, detail="答疑列表页不存在")
+
+    notices = qa_notices_on_page(page)
+    return templates.TemplateResponse(
+        request,
+        "qa_list.html",
+        {
+            "notices": notices,
+            "page": page,
+            "page_size": QA_PAGE_SIZE,
+            "total_pages": total_pages,
+            "total_count": len(QA_BY_SLUG),
+            "site_name": os.getenv("DEMO_SITE_NAME", "采购公告示例站"),
+        },
+    )
+
+
+@app.get("/qa/detail/{slug}")
+async def qa_detail(request: Request, slug: str):
+    notice = QA_BY_SLUG.get(slug)
+    if notice is None:
+        return templates.TemplateResponse(
+            request,
+            "qa_not_found.html",
+            {},
+            status_code=404,
+        )
+    return templates.TemplateResponse(
+        request,
+        "qa_detail.html",
+        {"notice": notice},
     )
 
 

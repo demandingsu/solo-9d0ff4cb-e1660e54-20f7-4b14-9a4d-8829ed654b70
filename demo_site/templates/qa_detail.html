@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ notice.question_no }} 答疑详情 · 采购公告示例站{% endblock %}
+{% block content %}
+<nav class="crumbs">
+  <a href="/qa?page=1">答疑澄清列表</a><span>/</span><span>答疑详情</span>
+</nav>
+
+<article class="notice-detail qa-detail"
+         data-project-no="{{ notice.project_no }}"
+         data-section-no="{{ notice.section_no }}"
+         data-question-no="{{ notice.question_no }}">
+  <div class="detail-heading">
+    <span class="qa-tag {% if notice.answer %}qa-answered{% else %}qa-pending{% endif %}">
+      {% if notice.answer %}已答复{% else %}待答复{% endif %}
+    </span>
+    <h1>{{ notice.title }}</h1>
+    <p class="muted">发布时间：{{ notice.published_at }}　来源：滨河公共资源交易中心</p>
+  </div>
+
+  <dl class="meta-grid">
+    <dt>项目名称</dt>
+    <dd>{{ notice.project_name }}</dd>
+    <dt>项目编号</dt>
+    <dd><code>{{ notice.project_no }}</code></dd>
+    <dt>标段/包号</dt>
+    <dd><code>{{ notice.section_no }}</code></dd>
+    <dt>问题编号</dt>
+    <dd><code class="qa-question-no">{{ notice.question_no }}</code></dd>
+  </dl>
+
+  <section class="qa-block qa-question-block">
+    <h2>澄清问题</h2>
+    <p class="qa-question">{{ notice.question }}</p>
+  </section>
+
+  <section class="qa-block qa-answer-block" data-qa-answer>
+    <h2>采购人答复</h2>
+    {% if notice.answer %}
+    <p class="qa-answer">{{ notice.answer }}</p>
+    {% else %}
+    <p class="qa-empty-answer">本问题暂未答复。</p>
+    {% endif %}
+  </section>
+</article>
+
+<div class="detail-actions">
+  <a href="/qa?page=1">← 返回答疑列表</a>
+  <span class="muted">本页为离线演示数据，不会改变真实采购安排。</span>
+</div>
+{% endblock %}
