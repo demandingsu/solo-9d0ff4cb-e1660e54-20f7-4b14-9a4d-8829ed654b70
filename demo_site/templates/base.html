@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}采购公告示例站{% endblock %}</title>
+  <link rel="stylesheet" href="/static/demo.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/notices?page=1">
+        <span class="brand-mark">示</span>
+        <span>采购公告示例站</span>
+      </a>
+      <span class="offline-tag">本地离线示例</span>
+    </div>
+  </header>
+
+  <main class="wrap page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>这是用于演示的本地公告站，页面与项目编号均为虚构数据，不连接互联网。</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,160 @@
+:root {
+  --ink: #17202a;
+  --muted: #667085;
+  --line: #d8dee8;
+  --paper: #ffffff;
+  --wash: #f3f6fa;
+  --brand: #17456b;
+  --brand-soft: #e8f0f7;
+  --amber: #9a6700;
+  --amber-soft: #fff3d6;
+  --red: #9f1d20;
+  --red-soft: #fdecec;
+  --green: #17663a;
+  --green-soft: #e8f7ee;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--wash);
+  font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  line-height: 1.65;
+}
+
+.wrap { width: min(1080px, calc(100% - 40px)); margin: 0 auto; }
+
+.site-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.site-header .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  gap: 16px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--brand);
+  font-size: 19px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: #fff;
+  background: var(--brand);
+}
+.offline-tag {
+  padding: 4px 9px;
+  border: 1px solid #b9d4e8;
+  border-radius: 999px;
+  color: var(--brand);
+  background: var(--brand-soft);
+  font-size: 12px;
+}
+
+.page { padding: 34px 0 48px; }
+
+.intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--brand);
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+h1 { margin: 0 0 6px; font-size: clamp(24px, 3vw, 34px); line-height: 1.3; }
+.muted { color: var(--muted); }
+.page-chip { flex: none; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 13px; white-space: nowrap; }
+
+.notice-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(23, 32, 42, .05);
+}
+.notice-table th, .notice-table td { padding: 16px 18px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.notice-table th { color: var(--muted); background: #f8fafc; font-size: 13px; font-weight: 600; }
+.notice-table tr:last-child td { border-bottom: 0; }
+.notice-link { color: var(--brand); font-weight: 650; text-decoration: none; }
+.notice-link:hover { text-decoration: underline; }
+.subline { margin-top: 5px; color: var(--muted); font-size: 12px; }
+.date-cell { white-space: nowrap; color: #344054; font-variant-numeric: tabular-nums; }
+
+.type-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.type-original { color: var(--brand); background: var(--brand-soft); }
+.type-extension { color: var(--amber); background: var(--amber-soft); }
+.type-terminated { color: var(--red); background: var(--red-soft); }
+.type-result { color: var(--green); background: var(--green-soft); }
+.type-other { color: var(--muted); background: #eef1f5; }
+
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 12px 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+.pager a, .pager span { padding: 6px 10px; font-size: 14px; }
+.pager a { color: var(--brand); text-decoration: none; }
+.pager a:hover { text-decoration: underline; }
+.pager .disabled { color: #b4bcc8; }
+.page-numbers { display: flex; gap: 4px; }
+.page-numbers .current { border-radius: 4px; color: #fff; background: var(--brand); }
+
+.crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: var(--muted); font-size: 13px; }
+.crumbs a { color: var(--brand); text-decoration: none; }
+
+.notice-detail { padding: clamp(22px, 5vw, 44px); background: var(--paper); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 34px rgba(23, 32, 42, .06); }
+.detail-heading { padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.detail-heading h1 { margin: 12px 0 8px; font-size: clamp(24px, 3.2vw, 36px); }
+.detail-heading p { margin: 0; font-size: 13px; }
+
+.meta-grid { display: grid; grid-template-columns: 120px 1fr; gap: 10px 18px; margin: 22px 0; padding: 18px; background: #f8fafc; border-radius: 8px; }
+.meta-grid dt { color: var(--muted); font-size: 13px; }
+.meta-grid dd { margin: 0; }
+code { padding: 2px 5px; border-radius: 4px; background: #eef1f5; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.notice-body { font-size: 16px; }
+.notice-body p { margin: 0 0 14px; }
+.key-line { padding: 12px 14px; border-left: 4px solid var(--brand); background: var(--brand-soft); font-weight: 650; }
+
+.download-box { display: flex; gap: 12px; align-items: baseline; margin-top: 26px; padding: 14px 16px; border: 1px dashed #b9c5d3; border-radius: 6px; color: var(--muted); font-size: 13px; }
+.detail-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; font-size: 13px; }
+.detail-actions a, .button-link { color: var(--brand); }
+.demo-note { margin-top: 18px; color: var(--muted); font-size: 13px; }
+
+.empty-state { padding: 70px 20px; text-align: center; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.empty-state h1 { margin-top: 14px; }
+.button-link { display: inline-block; margin-top: 12px; padding: 8px 14px; border-radius: 6px; color: #fff; background: var(--brand); text-decoration: none; }
+
+.site-footer { padding: 20px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; background: #f8fafc; }
+
+@media (max-width: 720px) {
+  .notice-table { font-size: 13px; }
+  .notice-table th:nth-child(2), .notice-table td:nth-child(2) { display: none; }
+  .notice-table th, .notice-table td { padding: 12px; }
+  .intro { align-items: flex-start; flex-direction: column; }
+  .meta-grid { grid-template-columns: 1fr; gap: 4px; }
+  .meta-grid dd { margin-bottom: 8px; }
+  .pager { flex-wrap: wrap; justify-content: center; }
+}

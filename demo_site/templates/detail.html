@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ notice.title }} · 采购公告示例站{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/notices?page=1">公告列表</a><span>/</span><span>公告详情</span></nav>
+
+<article class="notice-detail"
+         data-project-no="{{ notice.project_no }}"
+         data-section-no="{{ notice.section_no }}"
+         data-notice-type="{{ notice.notice_type }}"
+         data-publish-time="{{ notice.published_at }}">
+  <div class="detail-heading">
+    <span class="type-tag type-{{ notice.notice_type }}">{{ type_labels[notice.notice_type] }}</span>
+    <h1>{{ notice.title }}</h1>
+    <p class="muted">发布时间：{{ notice.published_at }}　来源：滨河公共资源交易中心</p>
+  </div>
+
+  <dl class="meta-grid">
+    <dt>项目名称</dt>
+    <dd>{{ notice.project_name }}</dd>
+    <dt>项目编号</dt>
+    <dd><code>{{ notice.project_no }}</code></dd>
+    <dt>标段/包号</dt>
+    <dd><code>{{ notice.section_no }}</code></dd>
+    <dt>公告类型</dt>
+    <dd>{{ type_labels[notice.notice_type] }}</dd>
+  </dl>
+
+  <div class="notice-body">
+    {% for paragraph in notice.body %}
+      {% if "截止时间" in paragraph or "开标时间" in paragraph %}
+        <p class="key-line">{{ paragraph }}</p>
+      {% else %}
+        <p>{{ paragraph }}</p>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="download-box">
+    <strong>附件</strong>
+    <span>招标文件（演示占位，无实际文件）</span>
+  </div>
+</article>
+
+<div class="detail-actions">
+  <a href="/notices?page=1">← 返回公告列表</a>
+  <span class="muted">本页为离线演示数据，不会改变真实采购安排。</span>
+</div>
+{% endblock %}

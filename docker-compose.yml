@@ -1,0 +1,39 @@
+services:
+  app:
+    build: .
+    image: procurement-bid-checker:local
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DEMO_INTERNAL_URL: "http://demo:8000"
+      DEMO_PUBLIC_URL: "http://localhost:8001"
+      DEMO_LIST_URL: "http://localhost:8001/notices?page=1"
+    ports:
+      - "8000:8000"
+    depends_on:
+      demo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 8s
+    init: true
+    restart: unless-stopped
+
+  demo:
+    build: .
+    image: procurement-bid-checker:local
+    command: ["uvicorn", "demo_site.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DEMO_SITE_NAME: "采购公告示例站"
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    init: true
+    restart: unless-stopped

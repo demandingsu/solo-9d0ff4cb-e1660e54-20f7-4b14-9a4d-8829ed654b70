@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}采购标段截标时间核验{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="shell header-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">核</span>
+        <div>
+          <strong>采购标段截标时间核验</strong>
+          <span>跨页公告 · 最新有效截止时间</span>
+        </div>
+      </div>
+      <nav class="header-nav">
+        <a href="/">核验工具</a>
+        <a href="/demo/notices?page=1" target="_blank" rel="noopener">打开示例公告站 ↗</a>
+        <a href="/docs" target="_blank" rel="noopener">API</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="app-footer">
+    <div class="shell footer-inner">
+      <p>每次查询均实时抓取，不缓存、不沿用上一次结果。页面无法完整核对时，结论一律为“无法判定”。</p>
+      <p>仅用于采购公告信息核对；投标安排请以采购人或交易平台正式通知为准。</p>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}{% if result %}核验结果 · {% endif %}采购标段截标时间核验{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">投标专员工作台</p>
+    <h1>这个标段，到底什么时候截标？</h1>
+    <p class="lede">
+      输入公告列表页、项目编号和标段号，工具会沿分页读取原公告、延期公告与终止公告，
+      只合并目标标段的变化，并给出可核验的有效截止时间。
+    </p>
+    <ul class="feature-list">
+      <li>跨分页追踪后续公告</li>
+      <li>严格排除同项目其他标段</li>
+      <li>终止后不展示旧时间为有效</li>
+    </ul>
+  </div>
+
+  <aside class="demo-card">
+    <div class="demo-card-head">
+      <span class="demo-dot"></span>
+      <div>
+        <strong>离线演示，已内置</strong>
+        <p>无需连接外网，示例公告分处第 1–3 页。</p>
+      </div>
+    </div>
+    <div class="preset-list">
+      {% for preset in presets %}
+      <a class="preset" href="{{ preset.href }}">
+        <span>
+          <strong>{{ preset.name }}</strong>
+          <small>{{ preset.project_no }} · 标段 {{ preset.section_no }}</small>
+        </span>
+        <span class="preset-arrow" aria-hidden="true">→</span>
+      </a>
+      {% endfor %}
+    </div>
+    <p class="demo-hint">
+      示例站地址由容器内网提供；结果中的来源链接已自动转为本站
+      <a href="{{ demo_public_url }}" target="_blank" rel="noopener">/demo</a> 代理，断网也能打开。
+    </p>
+  </aside>
+</section>
+
+<form class="check-form" method="get" action="/check" aria-label="标段截止时间核验">
+  <div class="field field-url">
+    <label for="list_url">公告列表页地址</label>
+    <input id="list_url" name="list_url" type="text" required
+           value="{{ form.list_url or demo_list_url }}"
+           placeholder="https://example.com/notices?page=1"
+           autocomplete="off" spellcheck="false">
+    <span class="field-note">请填写公告列表第一页的完整地址，工具会自行沿“下一页”抓取。</span>
+  </div>
+  <div class="field">
+    <label for="project_no">项目编号</label>
+    <input id="project_no" name="project_no" type="text" required
+           value="{{ form.project_no or '' }}" placeholder="如 DEMO-2026-001"
+           autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field field-section">
+    <label for="section_no">标段号</label>
+    <input id="section_no" name="section_no" type="text" required
+           value="{{ form.section_no or '' }}" placeholder="如 01 或 A"
+           autocomplete="off" spellcheck="false">
+  </div>
+  <button class="submit-button" type="submit">
+    开始核验
+    <span aria-hidden="true">→</span>
+  </button>
+</form>
+
+{% if form_error %}
+<div class="alert alert-error" role="alert">
+  <strong>无法开始核验</strong>
+  <p>{{ form_error }}</p>
+</div>
+{% endif %}
+
+{% if result %}
+<section class="result-section" aria-labelledby="result-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">核验结果</p>
+      <h2 id="result-heading">{{ result.project_no }} · 标段 {{ result.section_no }}</h2>
+    </div>
+    <span class="timestamp">本次实时抓取</span>
+  </div>
+
+  <div class="result-layout">
+    <article class="verdict verdict-{{ result.status }}">
+      <div class="verdict-top">
+        <span class="status-badge status-{{ result.status }}">{{ result.status_label }}</span>
+        {% if result.determinable %}
+        <span class="confidence">已完成核对</span>
+        {% else %}
+        <span class="confidence confidence-warn">证据不足</span>
+        {% endif %}
+      </div>
+
+      <p class="deadline-kicker">当前有效投标截止时间</p>
+      {% if result.status == 'terminated' and result.determinable %}
+      <p class="deadline-value deadline-none">无</p>
+      <p class="deadline-caption">项目已终止，不再接受投标。原截止时间不得再作为有效时间使用。</p>
+      {% elif result.determinable and result.effective_deadline %}
+      <p class="deadline-value">{{ result.effective_deadline }}</p>
+      <p class="deadline-caption">已合并截至当前检索到的全部相关公告。</p>
+      {% else %}
+      <p class="deadline-value deadline-unknown">无法判定</p>
+      <p class="deadline-caption">本次抓取未形成可用结论，请勿沿用此前记录的时间。</p>
+      {% endif %}
+
+      {% if result.determinable and result.deadline_source_url %}
+      <div class="source-row">
+        <span>当前结论来源</span>
+        <a href="{{ result.deadline_source_url }}" target="_blank" rel="noopener">
+          {{ result.deadline_source_title or '查看来源公告' }} ↗
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="verdict-reason">
+        <strong>判定说明</strong>
+        <p>{{ result.reason }}</p>
+      </div>
+    </article>
+
+    <aside class="side-panel">
+      <div class="side-block">
+        <p class="side-label">标段状态</p>
+        <p class="side-value">{{ result.status_label }}</p>
+      </div>
+      <div class="side-block">
+        <p class="side-label">匹配口径</p>
+        <p class="side-value side-small">项目编号 + 标段号<br>同一项目的其他标段已排除</p>
+      </div>
+      <div class="side-block">
+        <p class="side-label">抓取范围</p>
+        <p class="side-value side-small">{{ result.searched_pages|length }} 个列表页 · {{ result.detail_page_count }} 个详情页</p>
+      </div>
+    </aside>
+  </div>
+
+  {% if not result.determinable %}
+  <div class="alert alert-unknown" role="alert">
+    <strong>无法判定</strong>
+    <p>{{ result.reason }}</p>
+    {% if result.failures %}
+    <div class="failure-list">
+      <p class="failure-title">未能完成核验的地址：</p>
+      <ul>
+        {% for failure in result.failures %}
+        <li>
+          <span class="failure-reason">
+            {% if failure.stage == 'missing_original' %}未找到原公告{% else %}页面抓取或解析失败{% endif %}
+            · {{ failure.reason }}
+          </span>
+          <a href="{{ failure.url }}" target="_blank" rel="noopener">{{ failure.url }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if result.warnings %}
+  <div class="alert alert-warning">
+    <strong>需要留意的检索提示</strong>
+    <ul>
+      {% for warning in result.warnings %}<li>{{ warning }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="content-card">
+    <div class="card-heading">
+      <div>
+        <p class="eyebrow">变更时间线</p>
+        <h3>按发布时间合并的每次变化</h3>
+      </div>
+      <span class="muted-note">来源链接保留原始公告地址</span>
+    </div>
+
+    {% if result.status == 'terminated' and result.determinable %}
+    <p class="timeline-advisory advisory-red">该项目已终止。以下时间为历史记录，均不再有效，仅用于追溯变化。</p>
+    {% elif not result.determinable %}
+    <p class="timeline-advisory advisory-warn">本次核验证据不足。以下记录仅供追溯，不得据此确定截标时间。</p>
+    {% endif %}
+
+    {% if result.changes %}
+    <ol class="timeline">
+      {% for change in result.changes %}
+      <li class="timeline-item timeline-{{ change.type }}">
+        <div class="timeline-marker" aria-hidden="true"></div>
+        <div class="timeline-content">
+          <div class="timeline-meta">
+            <span class="type-badge type-{{ change.type }}">{{ change.type_label }}</span>
+            <time>{{ change.published_at or change.published_raw or '发布时间未提供' }}</time>
+          </div>
+          <h4>{{ change.title or '未命名公告' }}</h4>
+          <p>{{ change.summary }}</p>
+          {% if change.deadline_after %}
+          <p class="deadline-after">该次变更后时间：<strong>{{ change.deadline_after }}</strong></p>
+          {% elif change.type == 'terminated' %}
+          <p class="deadline-after deadline-revoked">该次变更后：投标截止时间失效</p>
+          {% endif %}
+          <a class="source-link" href="{{ change.url }}" target="_blank" rel="noopener">
+            查看来源公告 ↗
+          </a>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="empty-copy">没有可展示的变更记录。此情况下不能据此判断截标时间。</p>
+    {% endif %}
+  </div>
+
+  {% if result.notices %}
+  <div class="content-card">
+    <div class="card-heading">
+      <div>
+        <p class="eyebrow">命中公告</p>
+        <h3>仅包含该标段的公告</h3>
+      </div>
+      <span class="muted-note">共 {{ result.notices|length }} 条</span>
+    </div>
+    <div class="table-wrap">
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th>公告</th>
+            <th>类型</th>
+            <th>发布时间</th>
+            <th>公告载明截止时间</th>
+            <th>来源</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for notice in result.notices %}
+          <tr>
+            <td class="notice-title-cell">{{ notice.title }}</td>
+            <td><span class="type-badge type-{{ notice.notice_type }}">{{ notice.notice_type_label }}</span></td>
+            <td class="nowrap">{{ notice.published_at or notice.published_raw or '—' }}</td>
+            <td class="nowrap">{{ notice.deadline or '—' }}</td>
+            <td><a class="inline-link" href="{{ notice.url }}" target="_blank" rel="noopener">打开 ↗</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">“公告载明截止时间”仅表示该份公告中的字段，不代表当前有效；当前有效时间以页面顶部的核验结论为准。</p>
+  </div>
+  {% endif %}
+
+  <details class="scope-details">
+    <summary>查看本次检索地址（{{ result.searched_pages|length }} 个列表页）</summary>
+    <ul>
+      {% for page in result.searched_pages %}
+      <li><a href="{{ page }}" target="_blank" rel="noopener">{{ page }}</a></li>
+      {% endfor %}
+    </ul>
+    <p>另有 {{ result.detail_page_count }} 个公告详情页已被读取和比对。</p>
+  </details>
+
+  <div class="result-actions">
+    <a class="button-secondary" href="/">检查另一个标段</a>
+    <span>本次查询不保存数据，刷新或重新查询会重新抓取。</span>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

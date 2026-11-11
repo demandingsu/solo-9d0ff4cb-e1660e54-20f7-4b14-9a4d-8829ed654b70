@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}公告列表 · 采购公告示例站{% endblock %}
+{% block content %}
+<section class="intro">
+  <div>
+    <p class="eyebrow">公共资源交易 · 政府采购</p>
+    <h1>采购公告列表</h1>
+    <p class="muted">按发布时间从早到晚排列，每页 {{ page_size }} 条。原公告和后续延期、终止公告分处不同页。</p>
+  </div>
+  <div class="page-chip">第 {{ page }} / {{ total_pages }} 页</div>
+</section>
+
+<table class="notice-table">
+  <thead>
+    <tr>
+      <th>公告标题</th>
+      <th>类型</th>
+      <th>发布时间</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for notice in notices %}
+    <tr>
+      <td>
+        <a class="notice-link"
+           href="/notices/detail/{{ notice.slug }}"
+           data-project-no="{{ notice.project_no }}"
+           data-section-no="{{ notice.section_no }}">
+          {{ notice.title }}
+        </a>
+        <div class="subline">项目编号 {{ notice.project_no }} · 标段/包 {{ notice.section_no }}</div>
+      </td>
+      <td><span class="type-tag type-{{ notice.notice_type }}">{{ type_labels[notice.notice_type] }}</span></td>
+      <td class="date-cell">{{ notice.published_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<nav class="pager" aria-label="分页">
+  {% if page > 1 %}
+  <a href="/notices?page={{ page - 1 }}" rel="prev">← 上一页</a>
+  {% else %}
+  <span class="disabled">← 上一页</span>
+  {% endif %}
+
+  <div class="page-numbers">
+    {% for n in range(1, total_pages + 1) %}
+      {% if n == page %}
+      <span class="current" aria-current="page">{{ n }}</span>
+      {% else %}
+      <a href="/notices?page={{ n }}">{{ n }}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if page < total_pages %}
+  <a href="/notices?page={{ page + 1 }}" rel="next">下一页 →</a>
+  {% else %}
+  <span class="disabled">下一页 →</span>
+  {% endif %}
+</nav>
+
+<p class="demo-note">共 {{ total_count }} 条公告。可核验项目 <code>DEMO-2026-001</code> 的 01、02 标段，或项目 <code>DEMO-2026-002</code> 的 A 包。</p>
+{% endblock %}
